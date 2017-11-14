@@ -1,4 +1,5 @@
 import math
+import sys
 
 ###################################################################################
 #                                                                                 #
@@ -358,6 +359,9 @@ class Interpreter(object):
         global variables
         
         token = self.current_token
+
+        if token.type == VAR and token.value == 'EXIT':
+            sys.exit()
         
         if token.type == VAR and token.value not in variables:
             self.eat(VAR)
