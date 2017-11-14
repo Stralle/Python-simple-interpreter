@@ -195,7 +195,6 @@ class Interpreter(object):
         # type and if they match then "eat" the current token
         # and assign the next token to the self.current_token,
         # otherwise raise an exception.
-        print(self.current_token)
         if self.current_token.type == token_type:
             self.current_token = self.lexer.get_next_token()
         else:
@@ -359,11 +358,9 @@ class Interpreter(object):
         global variables
         
         token = self.current_token
-        print(self.current_token)
-
+        
         if token.type == VAR and token.value not in variables:
             self.eat(VAR)
-            print(self.current_token)
             if self.current_token.type == ASSIGN:
                 self.eat(ASSIGN)
                 variables[token.value] = self.assignment()
