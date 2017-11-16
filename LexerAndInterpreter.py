@@ -237,12 +237,12 @@ class Interpreter(object):
             self.eat(FUNC)
             self.eat(BRAO)
             
-            result = self.expr()
+            result = self.logexpr() #LOGEXPR
             power = 1
             
             if token.value == 'POW':
                 self.eat(COMMA)
-                power = self.expr()
+                power = self.logexpr() #LOGEXPR
                 
             self.eat(BRAC)
             
@@ -253,7 +253,7 @@ class Interpreter(object):
             return result
         elif token.type == BRAO:
             self.eat(BRAO)
-            result = self.expr()
+            result = self.logexpr() #LOGEXPR
             self.eat(BRAC)
             return result
         else:
@@ -386,7 +386,10 @@ def main():
         interpreter = Interpreter(lexer)
         result = interpreter.assignment()
         if not isinstance(result, int):
-            print ('{:.3f}'.format(result))
+            if float(result).is_integer():
+                print ('{:.0f}'.format(result))
+            else:
+                print ('{:.3f}'.format(result))
         else:
             print(result)
 
