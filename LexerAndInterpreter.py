@@ -18,8 +18,8 @@ import sys
 #
 # EOF (end-of-file) token is used to indicate that
 # there is no more input left for lexical analysis
-INTEGER, PLUS, MINUS, MUL, DIV, BRAO, BRAC, FUNC, DOT, COMMA, EOF = (
-    'INTEGER', 'PLUS', 'MINUS', 'MUL', 'DIV', 'BRAO', 'BRAC', 'FUNC', 'DOT', 'COMMA', 'EOF'
+INTEGER, PLUS, MINUS, MUL, DIV, BRAO, BRAC, FUNC, DOT, COMMA, NOT, EOF = (
+    'INTEGER', 'PLUS', 'MINUS', 'MUL', 'DIV', 'BRAO', 'BRAC', 'FUNC', 'DOT', 'COMMA', 'NOT', 'EOF'
 )
 
 GRTR, LESS, EQU, GREQU, LEQU, ASSIGN, VAR = (
@@ -187,6 +187,8 @@ class Interpreter(object):
         self.lexer = lexer
         # set current token to the first token taken from the input
         self.current_token = self.lexer.get_next_token()
+        self.prev_token = Token("NOT", "!")
+        self.mid_token = self.prev_token
 
     def error(self):
         raise Exception('Invalid syntax')
@@ -197,9 +199,19 @@ class Interpreter(object):
         # and assign the next token to the self.current_token,
         # otherwise raise an exception.
         if self.current_token.type == token_type:
+            self.prev_token = self.mid_token
+            self.mid_token = self.current_token
             self.current_token = self.lexer.get_next_token()
+            #print(self.prev_token)
+            #print(self.current_token)
+            #print("--------------------")
         else:
             self.error()
+
+    def isDecimal(self, result):
+        if result.is_integer():
+            return int(result)
+        return result
             
     def countFunc(self, result, token):
         if token=='SIN':
@@ -228,6 +240,8 @@ class Interpreter(object):
         if token.type == VAR and token.value in variables:
             self.eat(VAR)
             if self.current_token.type == ASSIGN:
+                if self.prev_token.type == PLUS or self.prev_token.type == MINUS or self.prev_token.type == MUL or self.prev_token.type == DIV:         #ERROR
+                    self.error()
                 self.eat(ASSIGN)
                 variables[token.value] = self.assignment()
                 return variables[token.value]
@@ -237,29 +251,33 @@ class Interpreter(object):
             self.eat(FUNC)
             self.eat(BRAO)
             
-            result = self.assignment() #LOGEXPR
+            result = self.logexpr() #LOGEXPR
             power = 1
             
             if token.value == 'POW':
                 self.eat(COMMA)
-                power = self.assignment() #LOGEXPR
+                power = self.logexpr() #LOGEXPR
                 
             self.eat(BRAC)
+
+            if self.current_token.type == ASSIGN:           #ERROR
+                self.error()
             
             if token.value == 'POW':
                 result = math.pow(result, power)
             else:
                 result = self.countFunc(result, token.value)
+            result = self.isDecimal(result)
             return result
         elif token.type == BRAO:
             self.eat(BRAO)
-            result = self.assignment() #LOGEXPR
+            result = self.logexpr() #LOGEXPR
             self.eat(BRAC)
             return result
         else:
             self.eat(INTEGER)
             result = token.value
-            if self.current_token.type == VAR:
+            if self.current_token.type == VAR or self.current_token.type == ASSIGN:             #ERROR
                 self.error()
         return result
 
@@ -329,13 +347,17 @@ class Interpreter(object):
             token = self.current_token
             self.eat(token.type)
             curr = self.expr()
+            #print(last)
+            #print(token)
+            #print(curr)
+            
             
             if token.type == LESS:
-                if curr < last:
+                if curr <= last:
                     fresult = False
                 
             elif token.type == GRTR:
-                if curr > last:
+                if curr >= last:
                     fresult = False
                 
             elif token.type == EQU:
@@ -343,11 +365,11 @@ class Interpreter(object):
                     fresult = False
                 
             elif token.type == LEQU:
-                if curr <= last:
+                if curr < last:
                     fresult = False
                 
             elif token.type == GREQU:
-                if curr >= last:
+                if curr > last:
                     fresult = False
             last = curr
             
@@ -372,8 +394,15 @@ class Interpreter(object):
             else:
                 self.error()
         result = self.logexpr()
+        #print(result)
+        #if isinstance(result, bool):
+            #print('yes bool')
+         #   if result:
+          #      result = 'True'
+          #  else:
+          #      result = 'False'
         return result
-                
+            
 def main():
     while True:
         try:
@@ -386,10 +415,10 @@ def main():
         interpreter = Interpreter(lexer)
         result = interpreter.assignment()
         if not isinstance(result, int):
-            if float(result).is_integer():
-                print ('{:.0f}'.format(result))
-            else:
-                print ('{:.3f}'.format(result))
+            #if float(result).is_integer():
+            #    print ('{:.0f}'.format(result))
+            #else:
+            print ('{:.3f}'.format(result))
         else:
             print(result)
 
