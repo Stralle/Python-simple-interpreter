@@ -22,6 +22,10 @@ INTEGER, PLUS, MINUS, MUL, DIV, BRAO, BRAC, FUNC, DOT, COMMA, NOT, EOF = (
     'INTEGER', 'PLUS', 'MINUS', 'MUL', 'DIV', 'BRAO', 'BRAC', 'FUNC', 'DOT', 'COMMA', 'NOT', 'EOF'
 )
 
+BOOL, TRUE, FALSE = (
+    'BOOL', 'True', 'False'
+)
+
 GRTR, LESS, EQU, GREQU, LEQU, ASSIGN, VAR = (
     'GRTR', 'LESS', 'EQU', 'GREQU', 'LEQU', 'ASSIGN', 'VAR'
 )
@@ -31,6 +35,8 @@ SIN, COS, TAN, CTG, SQRT, POW, LOG = (
 )
 
 variables = {}
+
+isAsign = False
 
 class Token(object):
     def __init__(self, type, value):
@@ -125,6 +131,10 @@ class Lexer(object):
                 string = self.texta()
                 if string in (SIN, COS, TAN, CTG, POW, SQRT, LOG):
                     return Token(FUNC, string)
+                elif string == 'True':
+                    return Token(BOOL, True)
+                elif string == 'False':
+                    return Token(BOOL, False)
                 else:
                     return Token(VAR, string)
 
@@ -202,9 +212,6 @@ class Interpreter(object):
             self.prev_token = self.mid_token
             self.mid_token = self.current_token
             self.current_token = self.lexer.get_next_token()
-            #print(self.prev_token)
-            #print(self.current_token)
-            #print("--------------------")
         else:
             self.error()
 
@@ -226,13 +233,14 @@ class Interpreter(object):
             return math.sqrt(result)
         if token=='LOG':
             return math.log10(result)
-        
+
         self.error()
         
     def factor(self):
         """factor : INTEGER"""
         token = self.current_token
         global variables
+        global isAsign
 
         if token.type == VAR and token.value not in variables:
             self.error()
@@ -240,11 +248,11 @@ class Interpreter(object):
         if token.type == VAR and token.value in variables:
             self.eat(VAR)
             if self.current_token.type == ASSIGN:
+                isAsign = True
                 if self.prev_token.type == PLUS or self.prev_token.type == MINUS or self.prev_token.type == MUL or self.prev_token.type == DIV:         #ERROR
                     self.error()
                 self.eat(ASSIGN)
                 variables[token.value] = self.assignment()
-                return variables[token.value]
             return variables[token.value]
 
         elif token.type == FUNC:
@@ -274,6 +282,13 @@ class Interpreter(object):
             result = self.logexpr() #LOGEXPR
             self.eat(BRAC)
             return result
+        elif token.type == BOOL:
+            self.eat(BOOL)
+            if token.value == True:
+                result = True
+            else:
+                result = False
+            return result
         else:
             self.eat(INTEGER)
             result = token.value
@@ -289,7 +304,11 @@ class Interpreter(object):
                 self.eat(MINUS)
             else:
                 self.eat(PLUS)
-        return sign*self.factor()
+        result = self.factor()
+        if not isinstance(result, bool):
+            return sign*result
+        else:
+            return result
         
     def term(self):
         """term : factor ((MUL | DIV) factor)*"""
@@ -302,7 +321,11 @@ class Interpreter(object):
                 result = result * self.unaryOp()
             elif token.type == DIV:
                 self.eat(DIV)
-                result = result / self.unaryOp()
+                num = self.unaryOp()
+                if isinstance(num, float) or isinstance(result, float):
+                    result = result / num
+                else:
+                    result = result // num
 
         return result
 
@@ -347,10 +370,6 @@ class Interpreter(object):
             token = self.current_token
             self.eat(token.type)
             curr = self.expr()
-            #print(last)
-            #print(token)
-            #print(curr)
-            
             
             if token.type == LESS:
                 if curr <= last:
@@ -374,11 +393,15 @@ class Interpreter(object):
             last = curr
             
         if flag:
+            print("LOGEXPR")
+            print(fresult)
             return fresult
-        return result
-
+        else:
+            return result
+    
     def assignment(self):
         global variables
+        global isAsign
         
         token = self.current_token
 
@@ -389,21 +412,17 @@ class Interpreter(object):
             self.eat(VAR)
             if self.current_token.type == ASSIGN:
                 self.eat(ASSIGN)
+                isAsign = True
                 variables[token.value] = self.assignment()
                 return variables[token.value]
             else:
+                isAsign = False
                 self.error()
         result = self.logexpr()
-        #print(result)
-        #if isinstance(result, bool):
-            #print('yes bool')
-         #   if result:
-          #      result = 'True'
-          #  else:
-          #      result = 'False'
         return result
             
 def main():
+    global isAsign
     while True:
         try:
             text = input('RAFMAT >>> ')
@@ -413,15 +432,15 @@ def main():
             continue
         lexer = Lexer(text)
         interpreter = Interpreter(lexer)
-        result = interpreter.assignment()
-        if not isinstance(result, int):
-            #if float(result).is_integer():
-            #    print ('{:.0f}'.format(result))
-            #else:
-            print ('{:.3f}'.format(result))
-        else:
-            print(result)
-
+        try:
+            result = interpreter.assignment()
+            if not isinstance(result, int) and not isAsign:
+                print ('{:.3f}'.format(result))
+            elif not isAsign:
+                print(result)
+            isAsign = False
+        except Exception as ex:
+            print(ex)
 
 if __name__ == '__main__':
     main()
